@@ -22,8 +22,7 @@ export const syncUser = async (req, res) => {
     });
 
     res.json({ 
-      user,
-      isNewUser: user.role === 'customer'
+      user
     });
   } catch (error) {
     console.error('Error syncing user:', error);
