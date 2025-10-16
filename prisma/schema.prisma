@@ -1,0 +1,53 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id     String  @id @default(uuid())
+  role   String
+  orders Order[]
+
+  @@map("users")
+}
+
+// Tags model
+model Tag {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  products Product[]
+
+  @@map("tags")
+}
+
+// Product model
+model Product {
+  id     String  @id @default(uuid())
+  name   String
+  price  Float
+  tags   Tag[]
+  orders Order[]
+
+  @@map("products")
+}
+
+// Order model
+model Order {
+  id          String  @id @default(uuid())
+  userId      String
+  productId   String
+  status      String  @default("diterima")
+  weddingInfo Json    // Stores object data in JSONB format
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("orders")
+}
