@@ -1,4 +1,5 @@
 import express from 'express';
+import authRoutes from './routes/authRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,6 +16,9 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
+
+// Routes
+app.use('/api/auth', authRoutes);
 
 // For local development
 if (process.env.NODE_ENV !== 'production') {
