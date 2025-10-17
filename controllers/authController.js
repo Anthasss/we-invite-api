@@ -2,7 +2,7 @@ import prisma from '../lib/prisma.js';
 
 export const syncUser = async (req, res) => {
   try {
-    const { sub } = req.body;
+    const { sub, name } = req.body;
 
     // Validate required fields
     if (!sub) {
@@ -17,6 +17,7 @@ export const syncUser = async (req, res) => {
       update: {}, // Don't update anything if user exists
       create: {
         id: sub,
+        name: name,
         role: 'customer'
       }
     });
