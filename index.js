@@ -1,8 +1,18 @@
 import express from 'express';
+import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// CORS configuration
+const corsOptions = {
+  origin: 'http://localhost:5173',
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 
 // Middleware to parse JSON bodies
 app.use(express.json());

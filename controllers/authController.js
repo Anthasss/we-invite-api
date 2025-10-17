@@ -22,7 +22,7 @@ export const syncUser = async (req, res) => {
     });
 
     res.json({ 
-      user
+      role: user.role
     });
   } catch (error) {
     console.error('Error syncing user:', error);
