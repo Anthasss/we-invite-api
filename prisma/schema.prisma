@@ -31,11 +31,12 @@ model Tag {
 
 // Product model
 model Product {
-  id     String  @id @default(uuid())
-  name   String
-  price  Float
-  tags   Tag[]
-  orders Order[]
+  id       String  @id @default(uuid())
+  name     String
+  price    Float
+  imageUrl String
+  tags     Tag[]
+  orders   Order[]
 
   @@map("products")
 }
@@ -46,7 +47,7 @@ model Order {
   userId      String
   productId   String
   status      String  @default("diterima")
-  weddingInfo Json    // Stores object data in JSONB format
+  weddingInfo Json // Stores object data in JSONB format
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
