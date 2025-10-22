@@ -7,10 +7,10 @@ const snap = new midtransClient.Snap({
   serverKey: process.env.MIDTRANS_SERVER_KEY,
 });
 
-// Create a new transaction
+// Create a Midtrans payment transaction only
 export const createTransaction = async (req, res) => {
   try {
-    const { orderId, productId, userId, weddingInfo } = req.body;
+    const { orderId, productId, userId } = req.body;
 
     // Validate required fields
     if (!orderId || !productId || !userId) {
@@ -63,24 +63,13 @@ export const createTransaction = async (req, res) => {
     // Create transaction with Midtrans
     const transaction = await snap.createTransaction(parameters);
 
-    // Create order in database
-    const order = await prisma.order.create({
-      data: {
-        id: orderId,
-        userId,
-        productId,
-        status: "pending",
-        weddingInfo: weddingInfo || {},
-      },
-      include: {
-        product: true,
-        user: true,
-      },
-    });
-
     res.status(201).json({
       transaction,
-      order,
+      productDetails: {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+      },
     });
   } catch (error) {
     console.error("Error creating transaction:", error);
