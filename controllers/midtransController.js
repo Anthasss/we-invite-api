@@ -58,6 +58,11 @@ export const createTransaction = async (req, res) => {
           name: product.name,
         },
       ],
+      callbacks: {
+        finish: "http://localhost:5173",
+        error: "http://localhost:5173",
+        pending: "http://localhost:5173/",
+      },
     };
 
     // Create transaction with Midtrans
@@ -101,11 +106,7 @@ export const handleNotification = async (req, res) => {
       }
     } else if (transactionStatus === "settlement") {
       orderStatus = "diterima";
-    } else if (
-      transactionStatus === "cancel" ||
-      transactionStatus === "deny" ||
-      transactionStatus === "expire"
-    ) {
+    } else if (transactionStatus === "cancel" || transactionStatus === "deny" || transactionStatus === "expire") {
       orderStatus = "dibatalkan";
     } else if (transactionStatus === "pending") {
       orderStatus = "pending";
