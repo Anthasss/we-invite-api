@@ -58,9 +58,11 @@ export const createTransaction = async (req, res) => {
           name: product.name,
         },
       ],
-      // Remove callbacks to prevent redirects that cause page reload
-      // The payment popup will close automatically and stay on the same page
-      // Use the webhook (handleNotification) and polling (getTransactionStatus) instead
+      callbacks: {
+        finish: "http://localhost:5173",
+        error: "http://localhost:5173",
+        pending: "http://localhost:5173",
+      },
     };
 
     // Create transaction with Midtrans
