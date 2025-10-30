@@ -12,14 +12,19 @@ export const createProduct = async (req, res) => {
       });
     }
 
+    // Normalize tags to lowercase for consistency
+    const normalizedTags = tags && tags.length > 0 
+      ? tags.map(tagName => tagName.trim().toLowerCase()).filter(tag => tag.length > 0)
+      : [];
+
     // Create product with optional tags
     const product = await prisma.product.create({
       data: {
         name,
         price: parseFloat(price),
         imageUrl,
-        tags: tags && tags.length > 0 ? {
-          connectOrCreate: tags.map(tagName => ({
+        tags: normalizedTags.length > 0 ? {
+          connectOrCreate: normalizedTags.map(tagName => ({
             where: { name: tagName },
             create: { name: tagName }
           }))
@@ -141,10 +146,13 @@ export const updateProduct = async (req, res) => {
 
     // Handle tags update if provided
     if (tags !== undefined) {
+      // Normalize tags to lowercase for consistency
+      const normalizedTags = tags.map(tagName => tagName.trim().toLowerCase()).filter(tag => tag.length > 0);
+      
       // First, disconnect all existing tags
       updateData.tags = {
         set: [], // Remove all existing connections
-        connectOrCreate: tags.map(tagName => ({
+        connectOrCreate: normalizedTags.map(tagName => ({
           where: { name: tagName },
           create: { name: tagName }
         }))
