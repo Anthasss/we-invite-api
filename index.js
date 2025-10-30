@@ -4,6 +4,7 @@ import authRoutes from './routes/authRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import midtransRoutes from './routes/midtransRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
+import tagRoutes from './routes/tagRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,6 +36,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/midtrans', midtransRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/tags', tagRoutes);
 
 // For local development
 if (process.env.NODE_ENV !== 'production') {
