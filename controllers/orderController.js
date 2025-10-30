@@ -1,6 +1,6 @@
 import prisma from "../lib/prisma.js";
 
-// Create a new order
+// Create a new order with snapToken support
 export const createOrder = async (req, res) => {
   try {
     const { orderId, userId, productId, weddingInfo, snapToken } = req.body;
