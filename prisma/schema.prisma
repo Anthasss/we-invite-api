@@ -47,7 +47,8 @@ model Order {
   userId      String
   productId   String
   status      String  @default("diterima")
-  weddingInfo Json // Stores object data in JSONB format
+  snapToken   String? // Midtrans snap token for payment
+  weddingInfo Json    // Stores object data in JSONB format
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
