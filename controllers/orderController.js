@@ -3,7 +3,7 @@ import prisma from "../lib/prisma.js";
 // Create a new order
 export const createOrder = async (req, res) => {
   try {
-    const { orderId, userId, productId, weddingInfo } = req.body;
+    const { orderId, userId, productId, weddingInfo, snapToken } = req.body;
 
     // Validate required fields
     if (!orderId || !userId || !productId) {
@@ -42,6 +42,7 @@ export const createOrder = async (req, res) => {
         productId,
         status: "pending",
         weddingInfo: weddingInfo || {},
+        snapToken: snapToken || null,
       },
       include: {
         product: true,
@@ -173,7 +174,7 @@ export const getOrdersByUserId = async (req, res) => {
 export const updateOrder = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, weddingInfo } = req.body;
+    const { status, weddingInfo, snapToken } = req.body;
 
     // Check if order exists
     const existingOrder = await prisma.order.findUnique({
@@ -190,6 +191,7 @@ export const updateOrder = async (req, res) => {
     const updateData = {};
     if (status !== undefined) updateData.status = status;
     if (weddingInfo !== undefined) updateData.weddingInfo = weddingInfo;
+    if (snapToken !== undefined) updateData.snapToken = snapToken;
 
     const order = await prisma.order.update({
       where: { id },
