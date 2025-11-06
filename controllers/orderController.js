@@ -1,12 +1,19 @@
 import prisma from "../lib/prisma.js";
-import { supabase } from "../lib/supabase.js";
+import supabase from "../lib/supabase.js";
 import { v4 as uuidv4 } from "uuid";
 
-// Create a new order with snapToken support and image upload
+// Create a new order with snapToken support and multiple image uploads
 export const createOrder = async (req, res) => {
   try {
+    // Debug logging
+    console.log("=== CREATE ORDER DEBUG ===");
+    console.log("Content-Type:", req.headers["content-type"]);
+    console.log("req.files:", req.files);
+    console.log("req.body:", req.body);
+    console.log("========================");
+
     const { orderId, userId, productId, weddingInfo, snapToken } = req.body;
-    const imageFile = req.file;
+    const imageFiles = req.files; // Array of files
 
     // Validate required fields
     if (!orderId || !userId || !productId) {
@@ -15,10 +22,10 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // Validate image file is provided
-    if (!imageFile) {
+    // Validate at least one image file is provided
+    if (!imageFiles || imageFiles.length === 0) {
       return res.status(400).json({
-        error: "Image file is required",
+        error: "At least one image file is required",
       });
     }
 
@@ -44,32 +51,45 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // Upload image to Supabase Storage
-    const fileExt = imageFile.originalname.split(".").pop();
-    const fileName = `${orderId}-${uuidv4()}.${fileExt}`;
-    const filePath = `order-images/${fileName}`;
+    // Upload all images to Supabase Storage
+    const uploadedImageUrls = [];
+    const uploadedFilePaths = [];
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("order-images")
-      .upload(filePath, imageFile.buffer, {
-        contentType: imageFile.mimetype,
-        upsert: false,
-      });
+    for (let i = 0; i < imageFiles.length; i++) {
+      const imageFile = imageFiles[i];
+      const fileExt = imageFile.originalname.split(".").pop();
+      const fileName = `${orderId}-${i + 1}-${uuidv4()}.${fileExt}`;
+      const filePath = `order-images/${fileName}`;
 
-    if (uploadError) {
-      console.error("Error uploading image to Supabase:", uploadError);
-      return res.status(500).json({
-        error: "Failed to upload image",
-        details: uploadError.message,
-      });
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("order-images")
+        .upload(filePath, imageFile.buffer, {
+          contentType: imageFile.mimetype,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error(`Error uploading image ${i + 1} to Supabase:`, uploadError);
+        
+        // Clean up previously uploaded images
+        if (uploadedFilePaths.length > 0) {
+          await supabase.storage.from("order-images").remove(uploadedFilePaths);
+        }
+        
+        return res.status(500).json({
+          error: `Failed to upload image ${i + 1}`,
+          details: uploadError.message,
+        });
+      }
+
+      // Get public URL for the uploaded image
+      const { data: publicUrlData } = supabase.storage
+        .from("order-images")
+        .getPublicUrl(filePath);
+
+      uploadedImageUrls.push(publicUrlData.publicUrl);
+      uploadedFilePaths.push(filePath);
     }
-
-    // Get public URL for the uploaded image
-    const { data: publicUrlData } = supabase.storage
-      .from("order-images")
-      .getPublicUrl(filePath);
-
-    const imageUrl = publicUrlData.publicUrl;
 
     // Create order in database
     try {
@@ -81,7 +101,7 @@ export const createOrder = async (req, res) => {
           status: "pending",
           weddingInfo: weddingInfo || {},
           snapToken: snapToken || null,
-          imageUrl,
+          imageUrls: uploadedImageUrls,
         },
         include: {
           product: true,
@@ -91,8 +111,8 @@ export const createOrder = async (req, res) => {
 
       res.status(201).json(order);
     } catch (dbError) {
-      // If order creation fails, delete the uploaded image
-      await supabase.storage.from("order-images").remove([filePath]);
+      // If order creation fails, delete all uploaded images
+      await supabase.storage.from("order-images").remove(uploadedFilePaths);
       throw dbError;
     }
   } catch (error) {

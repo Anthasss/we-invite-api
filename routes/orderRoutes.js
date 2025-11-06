@@ -28,7 +28,7 @@ const upload = multer({
 });
 
 // POST /api/orders - Create a new order
-router.post("/", upload.single("image"), createOrder);
+router.post("/", upload.array("images", 9), createOrder);
 
 // GET /api/orders - Get all orders (supports ?userId=xxx and ?status=xxx query)
 router.get("/", getAllOrders);
