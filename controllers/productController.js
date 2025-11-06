@@ -1,28 +1,65 @@
 import prisma from '../lib/prisma.js';
+import { uploadToSupabase, uploadMultipleToSupabase, deleteFromSupabase } from '../lib/uploadToSupabase.js';
 
 // Create a new product
 export const createProduct = async (req, res) => {
   try {
-    const { name, price, imageUrl, tags } = req.body;
+    const { name, price, tags } = req.body;
+    const files = req.files;
 
     // Validate required fields
-    if (!name || !price || !imageUrl) {
+    if (!name || !price) {
       return res.status(400).json({ 
-        error: 'Missing required fields: name, price, imageUrl' 
+        error: 'Missing required fields: name, price' 
       });
     }
 
-    // Normalize tags to lowercase for consistency
+    // Validate thumbnail image is provided
+    if (!files || !files.thumbnail || files.thumbnail.length === 0) {
+      return res.status(400).json({ 
+        error: 'Thumbnail image is required' 
+      });
+    }
+
+    // Validate gallery images count (max 5)
+    if (files.gallery && files.gallery.length > 5) {
+      return res.status(400).json({ 
+        error: 'Maximum 5 gallery images allowed' 
+      });
+    }
+
+    // Upload thumbnail image
+    const thumbnailUrl = await uploadToSupabase(
+      files.thumbnail[0].buffer,
+      files.thumbnail[0].originalname,
+      'products',
+      'thumbnails'
+    );
+
+    // Upload gallery images if provided
+    let galleryUrls = [];
+    if (files.gallery && files.gallery.length > 0) {
+      galleryUrls = await uploadMultipleToSupabase(
+        files.gallery,
+        'products',
+        'gallery'
+      );
+    }
+
+    // Parse tags if provided
     const normalizedTags = tags && tags.length > 0 
-      ? tags.map(tagName => tagName.trim().toLowerCase()).filter(tag => tag.length > 0)
+      ? (typeof tags === 'string' ? JSON.parse(tags) : tags)
+          .map(tagName => tagName.trim().toLowerCase())
+          .filter(tag => tag.length > 0)
       : [];
 
-    // Create product with optional tags
+    // Create product with images and optional tags
     const product = await prisma.product.create({
       data: {
         name,
         price: parseFloat(price),
-        imageUrl,
+        thumbnail: thumbnailUrl,
+        galleryUrls: galleryUrls,
         tags: normalizedTags.length > 0 ? {
           connectOrCreate: normalizedTags.map(tagName => ({
             where: { name: tagName },
@@ -124,7 +161,8 @@ export const getProductById = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, price, imageUrl, tags } = req.body;
+    const { name, price, tags } = req.body;
+    const files = req.files;
 
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({
@@ -142,12 +180,62 @@ export const updateProduct = async (req, res) => {
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (price !== undefined) updateData.price = parseFloat(price);
-    if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
+
+    // Handle thumbnail update
+    if (files && files.thumbnail && files.thumbnail.length > 0) {
+      // Delete old thumbnail from Supabase
+      if (existingProduct.thumbnail) {
+        try {
+          await deleteFromSupabase(existingProduct.thumbnail, 'products');
+        } catch (error) {
+          console.error('Error deleting old thumbnail:', error);
+        }
+      }
+
+      // Upload new thumbnail
+      updateData.thumbnail = await uploadToSupabase(
+        files.thumbnail[0].buffer,
+        files.thumbnail[0].originalname,
+        'products',
+        'thumbnails'
+      );
+    }
+
+    // Handle gallery update
+    if (files && files.gallery) {
+      // Validate gallery images count (max 5)
+      if (files.gallery.length > 5) {
+        return res.status(400).json({ 
+          error: 'Maximum 5 gallery images allowed' 
+        });
+      }
+
+      // Delete old gallery images from Supabase
+      if (existingProduct.galleryUrls && existingProduct.galleryUrls.length > 0) {
+        for (const imageUrl of existingProduct.galleryUrls) {
+          try {
+            await deleteFromSupabase(imageUrl, 'products');
+          } catch (error) {
+            console.error('Error deleting old gallery image:', error);
+          }
+        }
+      }
+
+      // Upload new gallery images
+      updateData.galleryUrls = await uploadMultipleToSupabase(
+        files.gallery,
+        'products',
+        'gallery'
+      );
+    }
 
     // Handle tags update if provided
     if (tags !== undefined) {
       // Normalize tags to lowercase for consistency
-      const normalizedTags = tags.map(tagName => tagName.trim().toLowerCase()).filter(tag => tag.length > 0);
+      const parsedTags = typeof tags === 'string' ? JSON.parse(tags) : tags;
+      const normalizedTags = parsedTags
+        .map(tagName => tagName.trim().toLowerCase())
+        .filter(tag => tag.length > 0);
       
       // First, disconnect all existing tags
       updateData.tags = {
@@ -191,6 +279,26 @@ export const deleteProduct = async (req, res) => {
       return res.status(404).json({ 
         error: 'Product not found' 
       });
+    }
+
+    // Delete thumbnail from Supabase Storage
+    if (existingProduct.thumbnail) {
+      try {
+        await deleteFromSupabase(existingProduct.thumbnail, 'products');
+      } catch (error) {
+        console.error('Error deleting thumbnail:', error);
+      }
+    }
+
+    // Delete gallery images from Supabase Storage
+    if (existingProduct.galleryUrls && existingProduct.galleryUrls.length > 0) {
+      for (const imageUrl of existingProduct.galleryUrls) {
+        try {
+          await deleteFromSupabase(imageUrl, 'products');
+        } catch (error) {
+          console.error('Error deleting gallery image:', error);
+        }
+      }
     }
 
     // Delete the product (orders will be cascade deleted)

@@ -32,12 +32,13 @@ model Tag {
 
 // Product model
 model Product {
-  id       String  @id @default(uuid())
-  name     String
-  price    Float
-  imageUrl String
-  tags     Tag[]
-  orders   Order[]
+  id           String   @id @default(uuid())
+  name         String
+  price        Float
+  thumbnail    String   // Single thumbnail image URL
+  galleryUrls  String[] // Array of gallery image URLs (max 5)
+  tags         Tag[]
+  orders       Order[]
 
   @@map("products")
 }
