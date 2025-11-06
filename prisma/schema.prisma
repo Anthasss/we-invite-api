@@ -48,6 +48,7 @@ model Order {
   productId   String
   status      String  @default("diterima")
   snapToken   String? // Midtrans snap token for payment
+  imageUrl    String? // URL of the uploaded image in Supabase storage
   weddingInfo Json    // Stores object data in JSONB format
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)

@@ -1,14 +1,24 @@
 import prisma from "../lib/prisma.js";
+import { supabase } from "../lib/supabase.js";
+import { v4 as uuidv4 } from "uuid";
 
-// Create a new order with snapToken support
+// Create a new order with snapToken support and image upload
 export const createOrder = async (req, res) => {
   try {
     const { orderId, userId, productId, weddingInfo, snapToken } = req.body;
+    const imageFile = req.file;
 
     // Validate required fields
     if (!orderId || !userId || !productId) {
       return res.status(400).json({
         error: "Missing required fields: orderId, userId, productId",
+      });
+    }
+
+    // Validate image file is provided
+    if (!imageFile) {
+      return res.status(400).json({
+        error: "Image file is required",
       });
     }
 
@@ -34,23 +44,57 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // Create order in database
-    const order = await prisma.order.create({
-      data: {
-        id: orderId,
-        userId,
-        productId,
-        status: "pending",
-        weddingInfo: weddingInfo || {},
-        snapToken: snapToken || null,
-      },
-      include: {
-        product: true,
-        user: true,
-      },
-    });
+    // Upload image to Supabase Storage
+    const fileExt = imageFile.originalname.split(".").pop();
+    const fileName = `${orderId}-${uuidv4()}.${fileExt}`;
+    const filePath = `order-images/${fileName}`;
 
-    res.status(201).json(order);
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from("order-images")
+      .upload(filePath, imageFile.buffer, {
+        contentType: imageFile.mimetype,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error("Error uploading image to Supabase:", uploadError);
+      return res.status(500).json({
+        error: "Failed to upload image",
+        details: uploadError.message,
+      });
+    }
+
+    // Get public URL for the uploaded image
+    const { data: publicUrlData } = supabase.storage
+      .from("order-images")
+      .getPublicUrl(filePath);
+
+    const imageUrl = publicUrlData.publicUrl;
+
+    // Create order in database
+    try {
+      const order = await prisma.order.create({
+        data: {
+          id: orderId,
+          userId,
+          productId,
+          status: "pending",
+          weddingInfo: weddingInfo || {},
+          snapToken: snapToken || null,
+          imageUrl,
+        },
+        include: {
+          product: true,
+          user: true,
+        },
+      });
+
+      res.status(201).json(order);
+    } catch (dbError) {
+      // If order creation fails, delete the uploaded image
+      await supabase.storage.from("order-images").remove([filePath]);
+      throw dbError;
+    }
   } catch (error) {
     console.error("Error creating order:", error);
     res.status(500).json({
