@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // User model
@@ -31,26 +32,28 @@ model Tag {
 
 // Product model
 model Product {
-  id       String  @id @default(uuid())
-  name     String
-  price    Float
-  imageUrl String
-  tags     Tag[]
-  orders   Order[]
+  id           String   @id @default(uuid())
+  name         String
+  price        Float
+  thumbnail    String   // Single thumbnail image URL
+  galleryUrls  String[] // Array of gallery image URLs (max 5)
+  tags         Tag[]
+  orders       Order[]
 
   @@map("products")
 }
 
 // Order model
 model Order {
-  id          String  @id @default(uuid())
+  id          String   @id @default(uuid())
   userId      String
   productId   String
-  status      String  @default("diterima")
-  snapToken   String? // Midtrans snap token for payment
-  weddingInfo Json    // Stores object data in JSONB format
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  status      String   @default("diterima")
+  snapToken   String?  // Midtrans snap token for payment
+  imageUrls   String[] // Array of URLs for uploaded images in Supabase storage
+  weddingInfo Json     // Stores object data in JSONB format
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("orders")
 }
